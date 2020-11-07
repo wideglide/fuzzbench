@@ -303,7 +303,7 @@ def experiment_benchmark_summary(experiment_snapshots_df,
 
     firsts = medians.groupby('benchmark').apply(lambda x: x.nlargest(1, metric_name)).reset_index(drop=True)
     firsts['pvalue'] = firsts.apply(lambda x: p_values.loc[x.benchmark, x.fuzzer, :].values.max(), axis=1)
-    firsts['A'] = firsts.apply(lambda x: stat_tests(experiment_snapshots_df, x.benchmark, x.fuzzer, x.next).a12, axis=1)
+    firsts['A'] = firsts.apply(lambda x: stat_tests.exp_pair_test(experiment_snapshots_df, x.benchmark, x.fuzzer, x.next).a12, axis=1)
     firsts['p-exact'] = firsts.apply(lambda x: stat_tests.exp_pair_test(experiment_snapshots_df, x.benchmark, x.fuzzer, x.next).pvalue, axis=1)
     pvalue_bins = [0, 0.001, 0.01, 0.05, 1]
     pvalue_labels = ['0.001', '0.01', '0.05', 'N']

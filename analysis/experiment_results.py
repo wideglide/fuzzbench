@@ -68,6 +68,7 @@ class ExperimentResults:  # pylint: disable=too-many-instance-attributes
 
         # Dictionary to store the full coverage data.
         self._coverage_dict = coverage_dict
+        self.benchmark_names = self._experiment_df.benchmark.unique()
 
     def _get_full_path(self, filename):
         return os.path.join(self._output_directory, filename)
@@ -103,21 +104,20 @@ class ExperimentResults:  # pylint: disable=too-many-instance-attributes
         This is cheap as no computation is done on the benchmark data,
         until a property is evaluated.
         """
-        benchmark_names = self._experiment_df.benchmark.unique()
         return [
             benchmark_results.BenchmarkResults(name, self._experiment_df,
                                                self._coverage_dict,
                                                self._output_directory,
                                                self._plotter)
-            for name in sorted(benchmark_names)
+            for name in sorted(self.benchmark_names)
         ]
 
     @property
     @functools.lru_cache()
     def summary_table(self):
         """A pivot table of medians for each fuzzer on each benchmark."""
-        return data_utils.experiment_pivot_table(
-            self._experiment_snapshots_df, data_utils.benchmark_rank_by_median)
+        return data_utils.experiment_benchmark_summary(
+            self._experiment_snapshots_df, 'regions')
 
     @property
     def rank_by_unique_coverage_average_normalized_score(self):
@@ -218,7 +218,7 @@ class ExperimentResults:  # pylint: disable=too-many-instance-attributes
         considering medians on final coverage.
         """
         average_ranks = self.rank_by_median_and_average_rank
-        num_of_benchmarks = self.summary_table.shape[0]
+        num_of_benchmarks = len(self.benchmark_names)
 
         plot_filename = 'experiment_critical_difference_plot.svg'
         self._plotter.write_critical_difference_plot(

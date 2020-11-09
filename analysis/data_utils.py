@@ -18,6 +18,9 @@ from analysis import stat_tests
 from common import environment
 
 
+METRIC = 'edges_covered'
+
+
 class EmptyDataError(ValueError):
     """An exception for when the data is empty."""
 
@@ -29,7 +32,7 @@ def validate_data(experiment_df):
 
     expected_columns = {
         'experiment', 'benchmark', 'fuzzer', 'trial_id', 'time_started',
-        'time_ended', 'time', 'edges_covered'
+        'time_ended', 'time', METRIC
     }
     missing_columns = expected_columns.difference(experiment_df.columns)
     if missing_columns:
@@ -40,7 +43,7 @@ def validate_data(experiment_df):
 def drop_uninteresting_columns(experiment_df):
     """Returns table with only interesting columns."""
     return experiment_df[[
-        'benchmark', 'fuzzer', 'trial_id', 'time', 'edges_covered',
+        'benchmark', 'fuzzer', 'trial_id', 'time', METRIC,
         'experiment', 'experiment_filestore'
     ]]
 
@@ -119,16 +122,18 @@ def get_benchmark_snapshot(benchmark_df,
     # Allow overriding threshold with environment variable as well.
     threshold = environment.get('BENCHMARK_SAMPLE_NUM_THRESHOLD', threshold)
 
-    num_trials = benchmark_df.trial_id.nunique()
-    trials_running_at_time = benchmark_df.time.value_counts()
-    criteria = trials_running_at_time >= threshold * num_trials
-    ok_times = trials_running_at_time[criteria]
-    latest_ok_time = ok_times.index.max()
-    benchmark_snapshot_df = benchmark_df[benchmark_df.time == latest_ok_time]
+    # num_trials = benchmark_df.trial_id.nunique()
+    # trials_running_at_time = benchmark_df.time.value_counts()
+    # criteria = trials_running_at_time >= threshold * num_trials
+    # ok_times = trials_running_at_time[criteria]
+    # latest_ok_time = ok_times.index.max()
+    # benchmark_snapshot_df = benchmark_df[benchmark_df.time == latest_ok_time]
+    benchmark_snapshot_df = benchmark_df.sort_values('time').drop_duplicates(
+        subset=['fuzzer', 'benchmark', 'trial_id'], keep='last')
     return benchmark_snapshot_df
 
 
-_DEFAULT_FUZZER_SAMPLE_NUM_THRESHOLD = 0.8
+_DEFAULT_FUZZER_SAMPLE_NUM_THRESHOLD = 0.1
 
 
 def get_fuzzers_with_not_enough_samples(
@@ -169,7 +174,7 @@ def benchmark_summary(benchmark_snapshot_df):
     |fuzzer|time||count|mean|std|min|25%|median|75%|max|
     """
     groups = benchmark_snapshot_df.groupby(['fuzzer', 'time'])
-    summary = groups['edges_covered'].describe()
+    summary = groups[METRIC].describe()
     summary.rename(columns={'50%': 'median'}, inplace=True)
     return summary.sort_values(('median'), ascending=False)
 
@@ -189,7 +194,7 @@ def experiment_summary(experiment_snapshots_df):
 def benchmark_rank_by_mean(benchmark_snapshot_df):
     """Returns ranking of fuzzers based on mean coverage."""
     assert benchmark_snapshot_df.time.nunique() == 1, 'Not a snapshot!'
-    means = benchmark_snapshot_df.groupby('fuzzer')['edges_covered'].mean()
+    means = benchmark_snapshot_df.groupby('fuzzer')[METRIC].mean()
     means.rename('mean cov', inplace=True)
     return means.sort_values(ascending=False)
 
@@ -197,7 +202,7 @@ def benchmark_rank_by_mean(benchmark_snapshot_df):
 def benchmark_rank_by_median(benchmark_snapshot_df):
     """Returns ranking of fuzzers based on median coverage."""
     assert benchmark_snapshot_df.time.nunique() == 1, 'Not a snapshot!'
-    medians = benchmark_snapshot_df.groupby('fuzzer')['edges_covered'].median()
+    medians = benchmark_snapshot_df.groupby('fuzzer')[METRIC].median()
     medians.rename('median cov', inplace=True)
     return medians.sort_values(ascending=False)
 
@@ -208,8 +213,8 @@ def benchmark_rank_by_average_rank(benchmark_snapshot_df):
     Returns the average rank by fuzzer.
     """
     # Make a copy of the dataframe view, because we want to add a new column.
-    measurements = benchmark_snapshot_df[['fuzzer', 'edges_covered']].copy()
-    measurements['rank'] = measurements['edges_covered'].rank()
+    measurements = benchmark_snapshot_df[['fuzzer', METRIC]].copy()
+    measurements['rank'] = measurements[METRIC].rank()
     avg_rank = measurements.groupby('fuzzer').mean()
     avg_rank.rename(columns={'rank': 'avg rank'}, inplace=True)
     avg_rank.sort_values('avg rank', ascending=False, inplace=True)
@@ -304,7 +309,7 @@ def experiment_benchmark_summary(experiment_snapshots_df,
     p_values = p_values.fillna(-1)
 
     agg_funcs = {
-        metric_name: pd.NamedAgg(column='edges_covered', aggfunc=np.median),
+        metric_name: pd.NamedAgg(column=METRIC, aggfunc=np.median),
         'N': pd.NamedAgg(column='trial_id', aggfunc='count')
     }
 

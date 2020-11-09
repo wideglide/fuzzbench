@@ -24,6 +24,8 @@ import scikit_posthocs as sp
 import scipy.stats as ss
 from scipy.special import betaln
 
+from analysis import data_utils
+
 SIGNIFICANCE_THRESHOLD = 0.05
 A12_EFFECT_THRESHOLD = 0.5735
 
@@ -48,7 +50,7 @@ def _create_p_value_table(benchmark_snapshot_df,
                                 alternative=alternative)
 
     groups = benchmark_snapshot_df.groupby('fuzzer')
-    samples = groups['edges_covered'].apply(list)
+    samples = groups[data_utils.METRIC].apply(list)
     fuzzers = samples.index
 
     data = []
@@ -66,9 +68,12 @@ def _create_p_value_table(benchmark_snapshot_df,
 
 
 def exp_pair_test(experiment_snapshot_df, benchmark, f1, f2):
+    """Perform a single statistical test given the benchmark snapshot
+    dataframe, the name of the benchmark and names of two fuzzers 
+    to compare."""
     df = experiment_snapshot_df[experiment_snapshot_df.benchmark == benchmark]
-    x = df[df.fuzzer == f1].edges_covered
-    y = df[df.fuzzer == f2].edges_covered
+    x = df[df.fuzzer == f1][data_utils.METRIC]
+    y = df[df.fuzzer == f2][data_utils.METRIC]
     if len(x) < 1 or len(y) < 1:
         print(f"[-] (pair_test) NOT enough samples for {benchmark},{f1},{f2} ")
         return Bunch(pvalue=1, a12=0, statistic=0)
@@ -130,7 +135,7 @@ def anova_test(benchmark_snapshot_df):
     Results should only considered when we can assume normal distributions.
     """
     groups = benchmark_snapshot_df.groupby('fuzzer')
-    sample_groups = groups['edges_covered'].apply(list).values
+    sample_groups = groups[data_utils.METRIC].apply(list).values
 
     _, p_value = ss.f_oneway(*sample_groups)
     return p_value
@@ -144,7 +149,7 @@ def anova_posthoc_tests(benchmark_snapshot_df):
     common_args = {
         'a': benchmark_snapshot_df,
         'group_col': 'fuzzer',
-        'val_col': 'edges_covered',
+        'val_col': data_utils.METRIC,
         'sort': True
     }
     p_adjust = 'holm'
@@ -160,7 +165,7 @@ def anova_posthoc_tests(benchmark_snapshot_df):
 def kruskal_test(benchmark_snapshot_df):
     """Returns p-value for Kruskal test."""
     groups = benchmark_snapshot_df.groupby('fuzzer')
-    sample_groups = groups['edges_covered'].apply(list).values
+    sample_groups = groups[data_utils.METRIC].apply(list).values
 
     _, p_value = ss.kruskal(*sample_groups)
     return p_value
@@ -174,7 +179,7 @@ def kruskal_posthoc_tests(benchmark_snapshot_df):
     common_args = {
         'a': benchmark_snapshot_df,
         'group_col': 'fuzzer',
-        'val_col': 'edges_covered',
+        'val_col': data_utils.METRIC,
         'sort': True
     }
     p_adjust = 'holm'

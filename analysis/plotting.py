@@ -25,6 +25,21 @@ from common import experiment_utils
 _DEFAULT_TICKS_COUNT = 12
 _DEFAULT_LABEL_ROTATION = 30
 
+all_labels = {
+    'edges_covered': {
+        'ranking_title': '',
+        'ranking_ylabel': 'Reached edge coverage',
+        'ranking_xlabel': 'Fuzzer (highest median coverage on the left)',
+        'growth_ylabel': 'Edge coverage',
+    },
+    'bugs': {
+        'ranking_title': '',
+        'ranking_ylabel': 'Reached bugs found',
+        'ranking_xlabel': 'Fuzzer (highest median bugs found on the left)',
+        'growth_ylabel': 'Unique bugs found',
+    },
+}
+
 
 def _formatted_hour_min(seconds):
     """Turns |seconds| seconds into %H:%m format.
@@ -41,6 +56,8 @@ def _formatted_hour_min(seconds):
         if hours:
             time_string += ':'
         time_string += '%dm' % minutes
+    elif hours == 0:
+        time_string = '%ds' % seconds
     return time_string
 
 
@@ -50,7 +67,8 @@ def _formatted_title(benchmark_snapshot_df):
     stats_string = benchmark_name
     stats_string += ' ('
 
-    snapshot_time = benchmark_snapshot_df.time.unique()[0]
+    snapshot_time = benchmark_snapshot_df.time.unique()[-1]
+    snapshot_time = np.ceil(snapshot_time / 3600.0) * 3600
     stats_string += _formatted_hour_min(snapshot_time)
 
     trial_count = benchmark_snapshot_df.fuzzer.value_counts().min()
@@ -85,7 +103,7 @@ class Plotter:
         '#17becf',
     ]
 
-    def __init__(self, fuzzers, quick=False, logscale=False):
+    def __init__(self, fuzzers, quick=False, logscale=False, metric='edges_covered'):
         """Instantiates plotter with list of |fuzzers|. If |quick| is True,
         creates plots faster but, with less detail.
         """
@@ -96,6 +114,8 @@ class Plotter:
 
         self._quick = quick
         self._logscale = logscale
+        self._metric = metric
+        self.labels = all_labels[metric]
 
     # pylint: disable=no-self-use
     def _write_plot_to_image(self,
@@ -128,12 +148,13 @@ class Plotter:
         assert len(benchmark_names) == 1, 'Not a single benchmark data!'
 
         benchmark_snapshot_df = data_utils.get_benchmark_snapshot(benchmark_df)
-        snapshot_time = benchmark_snapshot_df.time.unique()[0]
+        snapshot_time = benchmark_snapshot_df.time.unique()[-1]
+        snapshot_time = np.ceil(snapshot_time / 3600.0) * 3600
         fuzzer_order = data_utils.benchmark_rank_by_mean(
             benchmark_snapshot_df).index
 
         axes = sns.lineplot(
-            y='edges_covered',
+            y=self._metric,
             x='time',
             hue='fuzzer',
             hue_order=fuzzer_order,
@@ -153,14 +174,15 @@ class Plotter:
                     loc='upper left',
                     frameon=False)
 
-        axes.set(ylabel='Edge coverage')
+        axes.set(ylabel=self.labels['growth_ylabel'])
         axes.set(xlabel='Time (hour:minute)')
 
         if self._logscale or logscale:
             axes.set_xscale('log')
+            axes.set(xlim=(21.1, snapshot_time + 1))
             ticks = np.logspace(
                 # Start from the time of the first measurement.
-                np.log10(experiment_utils.DEFAULT_SNAPSHOT_SECONDS),
+                np.log10(42.5),
                 np.log10(snapshot_time + 1),  # Include tick at end time.
                 _DEFAULT_TICKS_COUNT)
         else:
@@ -203,22 +225,22 @@ class Plotter:
         # especially with distributions with high variance. It does not have
         # however violinplot's kernel density estimation.
 
-        sns.boxplot(y='edges_covered',
+        sns.boxplot(y=self._metric,
                        x='fuzzer',
                        data=benchmark_snapshot_df,
                        order=fuzzer_order,
                        palette=self._fuzzer_colors,
                        ax=axes)
         sns.swarmplot(x='fuzzer',
-                      y='edges_covered',
+                      y=self._metric,
                       data=benchmark_snapshot_df,
                       order=fuzzer_order,
                       size=4,
                       ax=axes)
 
         axes.set_title(_formatted_title(benchmark_snapshot_df))
-        axes.set(ylabel='Reached region coverage')
-        axes.set(xlabel='Fuzzer (highest median coverage on the left)')
+        axes.set(ylabel=self.labels['ranking_ylabel'])
+        axes.set(xlabel=self.labels['ranking_xlabel'])
         axes.set_xticklabels(axes.get_xticklabels(),
                              rotation=_DEFAULT_LABEL_ROTATION,
                              horizontalalignment='right')
@@ -244,7 +266,7 @@ class Plotter:
         for fuzzer in fuzzers_in_order:
             measurements_for_fuzzer = benchmark_snapshot_df[
                 benchmark_snapshot_df.fuzzer == fuzzer]
-            sns.distplot(measurements_for_fuzzer['edges_covered'],
+            sns.distplot(measurements_for_fuzzer[self._metric],
                          hist=False,
                          label=fuzzer,
                          color=self._fuzzer_colors[fuzzer],
@@ -253,7 +275,7 @@ class Plotter:
         axes.set_title(_formatted_title(benchmark_snapshot_df))
         axes.legend(loc='upper right', frameon=False)
 
-        axes.set(xlabel='Edge coverage')
+        axes.set(xlabel=self.labels['growth_ylabel'])
         axes.set(ylabel='Density')
         axes.set_xticklabels(axes.get_xticklabels(),
                              rotation=_DEFAULT_LABEL_ROTATION,
@@ -276,7 +298,7 @@ class Plotter:
         fuzzer_order = data_utils.benchmark_rank_by_median(
             benchmark_snapshot_df).index
 
-        axes = sns.barplot(y='edges_covered',
+        axes = sns.barplot(y=self._metric,
                            x='fuzzer',
                            data=benchmark_snapshot_df,
                            order=fuzzer_order,
@@ -285,8 +307,8 @@ class Plotter:
                            ax=axes)
 
         axes.set_title(_formatted_title(benchmark_snapshot_df))
-        axes.set(ylabel='Reached region coverage')
-        axes.set(xlabel='Fuzzer (highest median coverage on the left)')
+        axes.set(ylabel=self.labels['ranking_ylabel'])
+        axes.set(xlabel=self.labels['ranking_xlabel'])
         axes.set_xticklabels(axes.get_xticklabels(),
                              rotation=_DEFAULT_LABEL_ROTATION,
                              horizontalalignment='right')

@@ -20,15 +20,14 @@ import sys
 import pandas as pd
 
 from analysis import data_utils
-from analysis import coverage_data_utils
 from analysis import experiment_results
 from analysis import plotting
 from analysis import queries
 from analysis import rendering
 from common import filesystem
-from common import logs
+# from common import logs
 
-logger = logs.Logger('generate_report')
+# logger = logs.Logger('generate_report')
 
 
 def get_arg_parser():
@@ -122,6 +121,12 @@ def get_arg_parser():
         help=('If set, and the experiment data is already cached, '
               'don\'t query the database again to get the data.'))
 
+    parser.add_argument(
+        '-m',
+        '--metric',
+        default='edges_covered',
+        help='Column name of the metric used to compare fuzzers')
+
     return parser
 
 
@@ -140,6 +145,7 @@ def generate_report(experiment_names,
                     end_time=None,
                     merge_with_clobber=False,
                     merge_with_clobber_nonprivate=False,
+                    metric='edges_covered',
                     coverage_report=False):
     """Generate report helper."""
     if merge_with_clobber_nonprivate:
@@ -149,6 +155,8 @@ def generate_report(experiment_names,
 
     main_experiment_name = experiment_names[0]
     report_name = report_name or main_experiment_name
+
+    data_utils.METRIC = metric
 
     filesystem.create_directory(report_directory)
 
@@ -186,11 +194,12 @@ def generate_report(experiment_names,
     # Load the coverage json summary file.
     coverage_dict = {}
     if coverage_report:
+        from analysis import coverage_data_utils
         coverage_dict = coverage_data_utils.get_covered_regions_dict(
             experiment_df)
 
     fuzzer_names = experiment_df.fuzzer.unique()
-    plotter = plotting.Plotter(fuzzer_names, quick, log_scale)
+    plotter = plotting.Plotter(fuzzer_names, quick, log_scale, metric=metric)
     experiment_ctx = experiment_results.ExperimentResults(
         experiment_df,
         coverage_dict,
@@ -209,7 +218,7 @@ def generate_report(experiment_names,
 
 def main():
     """Generates report."""
-    logs.initialize()
+    # logs.initialize()
 
     parser = get_arg_parser()
     args = parser.parse_args()
@@ -226,6 +235,7 @@ def main():
                     from_cached_data=args.from_cached_data,
                     end_time=args.end_time,
                     merge_with_clobber=args.merge_with_clobber,
+                    metric=args.metric,
                     coverage_report=args.coverage_report)
 
 

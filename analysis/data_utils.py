@@ -226,7 +226,7 @@ def benchmark_rank_by_stat_test_wins(benchmark_snapshot_df):
 
     # Turn "significant" p-values into 1-s.
     better_than = a_values.applymap(
-        lambda p: a < stat_tests.A12_EFFECT_THRESHOLD)
+        lambda x: x < stat_tests.A12_EFFECT_THRESHOLD)
     better_than = better_than.applymap(int)
 
     score = better_than.sum(axis=1).sort_values(ascending=False)

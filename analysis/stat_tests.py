@@ -105,7 +105,7 @@ def two_sided_u_test_r(benchmark_snapshot_df):
 def vda_measure(benchmark_snapshot_df):
     """Returns A12 measure table for Vargha-Delaney A12."""
     return _create_p_value_table(benchmark_snapshot_df,
-                                 mwu,
+                                 r_mannwhitneyu,
                                  alternative='two-sided',
                                  statistic='a12')
 

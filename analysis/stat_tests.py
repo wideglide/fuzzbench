@@ -25,6 +25,7 @@ import scipy.stats as ss
 from scipy.special import betaln
 
 SIGNIFICANCE_THRESHOLD = 0.05
+A12_EFFECT_THRESHOLD = 0.5735
 
 
 def _create_p_value_table(benchmark_snapshot_df,

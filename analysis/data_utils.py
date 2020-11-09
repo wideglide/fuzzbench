@@ -222,7 +222,7 @@ def benchmark_rank_by_stat_test_wins(benchmark_snapshot_df):
     Returns ranking according to the number of statistical test wins.
     """
 #   p_values = stat_tests.one_sided_u_test(benchmark_snapshot_df)
-    a_values = stat_tests.vda_measure(benchmark_snapshow_df)
+    a_values = stat_tests.vda_measure(benchmark_snapshot_df)
 
     # Turn "significant" p-values into 1-s.
     better_than = a_values.applymap(
@@ -235,7 +235,7 @@ def benchmark_rank_by_stat_test_wins(benchmark_snapshot_df):
     return score
 
 def benchmark_rank_by_effect_size(benchmark_snapshot_df):
-    better_than = stat_tests.vda_measure(benchmark_snapshow_df)
+    better_than = stat_tests.vda_measure(benchmark_snapshot_df)
     score = better_than.sum(axis=1).sort_values(ascending=False)
     return score
 

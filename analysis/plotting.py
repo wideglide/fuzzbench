@@ -212,7 +212,7 @@ class Plotter:
                                   wide=wide,
                                   logscale=logscale)
 
-    def violin_plot(self, benchmark_snapshot_df, axes=None):
+    def violin_plot(self, benchmark_snapshot_df, axes=None, order='median'):
         """Draws violin plot.
 
         The fuzzer labels will be in the order of their median coverage.
@@ -221,8 +221,11 @@ class Plotter:
         assert len(benchmark_names) == 1, 'Not a single benchmark data!'
         assert benchmark_snapshot_df.time.nunique() == 1, 'Not a snapshot!'
 
-        fuzzer_order = data_utils.benchmark_rank_by_median(
-            benchmark_snapshot_df).index
+        ranking_function = data_utils.benchmark_rank_by_median
+        if order == 'vda':
+            ranking_function = data_utils.benchmark_rank_by_effect_size
+
+        fuzzer_order = ranking_function(benchmark_snapshot_df).index
 
         # Another options is to use |boxplot| instead of |violinplot|. With
         # boxplot the median/min/max/etc is more visible than on the violin,
@@ -254,7 +257,14 @@ class Plotter:
     def write_violin_plot(self, benchmark_snapshot_df, image_path):
         """Writes violin plot."""
         self._write_plot_to_image(self.violin_plot, benchmark_snapshot_df,
-                                  image_path)
+                                  image_path, order='median')
+
+    def write_box_plot(self, benchmark_snapshot_df, image_path):
+        """Writes box plot."""
+        self._write_plot_to_image(self.violin_plot,
+                                  benchmark_snapshot_df,
+                                  image_path,
+                                  order='vda')
 
     def distribution_plot(self, benchmark_snapshot_df, axes=None):
         """Draws distribution plot.

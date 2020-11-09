@@ -269,6 +269,14 @@ class BenchmarkResults:
         return plot_filename
 
     @property
+    def box_plot(self):
+        """Box plot."""
+        plot_filename = self._prefix_with_benchmark('box_vda_order.svg')
+        self._plotter.write_box_plot(self._benchmark_snapshot_df,
+                                     self._get_full_path(plot_filename))
+        return plot_filename
+
+    @property
     def distribution_plot(self):
         """Distribution plot."""
         plot_filename = self._prefix_with_benchmark('distribution.svg')

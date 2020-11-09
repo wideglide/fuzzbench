@@ -240,6 +240,10 @@ def benchmark_rank_by_stat_test_wins(benchmark_snapshot_df):
 
 
 def benchmark_rank_by_effect_size(benchmark_snapshot_df):
+    """Carries out Vargha-Delaney A12 measure on each fuzzer pair.
+
+    Returns the ranking according to the sum of their measures.
+    """
     better_than = stat_tests.vda_measure(benchmark_snapshot_df)
     score = better_than.sum(axis=1).sort_values(ascending=False)
     return score

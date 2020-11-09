@@ -103,7 +103,11 @@ class Plotter:
         '#17becf',
     ]
 
-    def __init__(self, fuzzers, quick=False, logscale=False, metric='edges_covered'):
+    def __init__(self,
+                 fuzzers,
+                 quick=False,
+                 logscale=False,
+                 metric='edges_covered'):
         """Instantiates plotter with list of |fuzzers|. If |quick| is True,
         creates plots faster but, with less detail.
         """
@@ -226,11 +230,11 @@ class Plotter:
         # however violinplot's kernel density estimation.
 
         sns.boxplot(y=self._metric,
-                       x='fuzzer',
-                       data=benchmark_snapshot_df,
-                       order=fuzzer_order,
-                       palette=self._fuzzer_colors,
-                       ax=axes)
+                    x='fuzzer',
+                    data=benchmark_snapshot_df,
+                    order=fuzzer_order,
+                    palette=self._fuzzer_colors,
+                    ax=axes)
         sns.swarmplot(x='fuzzer',
                       y=self._metric,
                       data=benchmark_snapshot_df,

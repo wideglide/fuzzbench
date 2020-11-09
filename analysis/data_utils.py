@@ -17,7 +17,6 @@ import pandas as pd
 from analysis import stat_tests
 from common import environment
 
-
 METRIC = 'edges_covered'
 
 
@@ -43,8 +42,8 @@ def validate_data(experiment_df):
 def drop_uninteresting_columns(experiment_df):
     """Returns table with only interesting columns."""
     return experiment_df[[
-        'benchmark', 'fuzzer', 'trial_id', 'time', METRIC,
-        'experiment', 'experiment_filestore'
+        'benchmark', 'fuzzer', 'trial_id', 'time', METRIC, 'experiment',
+        'experiment_filestore'
     ]]
 
 
@@ -226,7 +225,7 @@ def benchmark_rank_by_stat_test_wins(benchmark_snapshot_df):
 
     Returns ranking according to the number of statistical test wins.
     """
-#   p_values = stat_tests.one_sided_u_test(benchmark_snapshot_df)
+    #   p_values = stat_tests.one_sided_u_test(benchmark_snapshot_df)
     a_values = stat_tests.vda_measure(benchmark_snapshot_df)
 
     # Turn "significant" p-values into 1-s.
@@ -238,6 +237,7 @@ def benchmark_rank_by_stat_test_wins(benchmark_snapshot_df):
     score.rename('stat wins', inplace=True)
 
     return score
+
 
 def benchmark_rank_by_effect_size(benchmark_snapshot_df):
     better_than = stat_tests.vda_measure(benchmark_snapshot_df)
@@ -283,6 +283,7 @@ def experiment_benchmark_summary(experiment_snapshots_df,
     """Creates a summary table of the best coverage per fuzzer with
     statitical values and ranking to show the significance of the
     values"""
+
     def pvalue_colors(val):
         colors = {
             'N': '#fbd7d4',
@@ -316,21 +317,30 @@ def experiment_benchmark_summary(experiment_snapshots_df,
     grouping = ['benchmark', 'fuzzer']
     fuzzer_groups = experiment_snapshots_df.groupby(grouping)
     medians = fuzzer_groups.agg(**agg_funcs).reset_index()
-    sort_columns= ['benchmark', metric_name, 'fuzzer']
+    sort_columns = ['benchmark', metric_name, 'fuzzer']
     medians = medians.sort_values(by=sort_columns, ascending=True)
 
     benchmark_medians = medians.groupby('benchmark')
     medians['next'] = benchmark_medians.fuzzer.shift()
-    medians["rank"] = benchmark_medians[metric_name].rank(method='max', ascending=False).round(0)
+    medians["rank"] = benchmark_medians[metric_name].rank(
+        method='max', ascending=False).round(0)
     medians['pct_chg'] = benchmark_medians[metric_name].pct_change().round(4)
 
-    firsts = medians.groupby('benchmark').apply(lambda x: x.nlargest(1, metric_name)).reset_index(drop=True)
-    firsts['pvalue'] = firsts.apply(lambda x: p_values.loc[x.benchmark, x.fuzzer, :].values.max(), axis=1)
-    firsts['A12'] = firsts.apply(lambda x: stat_tests.exp_pair_test(experiment_snapshots_df, x.benchmark, x.fuzzer, x.next).a12, axis=1)
-    firsts['p-exact'] = firsts.apply(lambda x: stat_tests.exp_pair_test(experiment_snapshots_df, x.benchmark, x.fuzzer, x.next).pvalue, axis=1)
+    firsts = medians.groupby('benchmark').apply(
+        lambda x: x.nlargest(1, metric_name)).reset_index(drop=True)
+    firsts['pvalue'] = firsts.apply(
+        lambda x: p_values.loc[x.benchmark, x.fuzzer, :].values.max(), axis=1)
+    firsts['A12'] = firsts.apply(lambda x: stat_tests.exp_pair_test(
+        experiment_snapshots_df, x.benchmark, x.fuzzer, x.next).a12,
+                                 axis=1)
+    firsts['p-exact'] = firsts.apply(lambda x: stat_tests.exp_pair_test(
+        experiment_snapshots_df, x.benchmark, x.fuzzer, x.next).pvalue,
+                                     axis=1)
     pvalue_bins = [0, 0.001, 0.01, 0.05, 1]
     pvalue_labels = ['0.001', '0.01', '0.05', 'N']
-    firsts['sig'] = pd.cut(firsts.pvalue, bins=pvalue_bins, labels=pvalue_labels)
+    firsts['sig'] = pd.cut(firsts.pvalue,
+                           bins=pvalue_bins,
+                           labels=pvalue_labels)
     firsts.sig.fillna('N', inplace=True)
     col_formats = {
         'rank': "{:.0f}",
@@ -340,7 +350,10 @@ def experiment_benchmark_summary(experiment_snapshots_df,
         'A12': "{:.03f}",
         'p-exact': "{:0.4f}"
     }
-    col_order = ['benchmark', 'fuzzer', 'rank', 'pct_chg', 'pvalue', 'sig', 'A12', 'next', 'p-exact', metric_name, 'N']
+    col_order = [
+        'benchmark', 'fuzzer', 'rank', 'pct_chg', 'pvalue', 'sig', 'A12',
+        'next', 'p-exact', metric_name, 'N'
+    ]
     firsts = firsts[col_order]
     firsts = firsts.style\
                    .hide_index()\
@@ -349,6 +362,7 @@ def experiment_benchmark_summary(experiment_snapshots_df,
                    .applymap(pvalue_colors, subset=['sig'])\
                    .applymap(A_colors, subset=['A12'])
     return firsts
+
 
 def experiment_rank_by_average_rank(experiment_pivot_df):
     """Creates experiment level ranking of fuzzers.

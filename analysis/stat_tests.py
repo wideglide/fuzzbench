@@ -97,7 +97,8 @@ def two_sided_u_test(benchmark_snapshot_df):
 def two_sided_u_test_exact(benchmark_snapshot_df):
     """Returns p-value table for two-tailed Mann-Whitney U test."""
     return _create_p_value_table(benchmark_snapshot_df,
-                                 mwu, alternative='two-sided')
+                                 mwu,
+                                 alternative='two-sided')
 
 
 def two_sided_u_test_r(benchmark_snapshot_df):
@@ -219,6 +220,7 @@ MannwhitneyuResult = namedtuple('MannwhitneyuResult', ('statistic', 'pvalue'))
 
 
 class Bunch:
+
     def __init__(self, **kwds):
         self.__dict__.update(kwds)
 
@@ -310,11 +312,11 @@ def mwu(x, y, correction=True, exact='auto', alternative='two-sided'):
     if exact == 'auto':
         maxn = 100000
         exact = ((n1 < 21 or n2 < 21) and n1 + n2 < maxn)
-        exact = exact and (-np.log(n1 + n2 + 1) -
-                            betaln(n1 + 1, n2 + 1) < np.log(maxn))
+        exact = exact and (-np.log(n1 + n2 + 1) - betaln(n1 + 1, n2 + 1) <
+                           np.log(maxn))
 
     ranked = ss.rankdata(np.concatenate((x, y)))
-    rankx = ranked[0:n1]       # get the x-ranks
+    rankx = ranked[0:n1]  # get the x-ranks
     T = ss.tiecorrect(ranked)
     if T == 0:
         raise ValueError('All numbers are identical')
@@ -322,16 +324,17 @@ def mwu(x, y, correction=True, exact='auto', alternative='two-sided'):
     # Compute the A12 measure
     R1 = rankx.sum()
     # A = (R1/n1 - (n1+1)/2)/n2 # formula (14) in Vargha and Delaney, 2000
-    A = (2 * R1 - n1 * (n1 + 1)) / (2 * n2 * n1)  # equivalent formula to avoid accuracy errors
+    # equivalent formula to avoid accuracy errors
+    A = (2 * R1 - n1 * (n1 + 1)) / (2 * n2 * n1)
     # Cliff's delta linearly related to V-D A12 measure (range (-1, 1))
-    CD = (A * 2) -1
+    cliffs_delta = (A * 2) - 1
 
     # Given ranks, calculate U for x; remainder is U for y
-    u1 = rankx.sum() - n1*(n1+1)/2
-    u2 = n1*n2 - u1
+    u1 = rankx.sum() - n1 * (n1 + 1) / 2
+    u2 = n1 * n2 - u1
     if not exact:
-        u1, u2 = u2, u1   # 'exact' code path calculates an empirical cdf
-                          # normal approx uses sf instead
+        u1, u2 = u2, u1  # 'exact' code path calculates an empirical cdf
+        # normal approx uses sf instead
 
     if alternative == 'two-sided':
         bigu, smallu = max(u1, u2), min(u1, u2)
@@ -346,14 +349,15 @@ def mwu(x, y, correction=True, exact='auto', alternative='two-sided'):
         a = np.arange(n1, n1 + n2)
         a_range = np.arange(n2)
         u = [0]
-        while a.sum() != n2*(n2-1)/2:   # When in leftmost position, a == list(range(n2))
+        while a.sum() != n2 * (
+                n2 - 1) / 2:  # When in leftmost position, a == list(range(n2))
             # Do the shift operation
             i = np.nonzero(a - a_range)[0][0]
-            a[:i+1] = a[i] + np.arange(-i-1, 0)
+            a[:i + 1] = a[i] + np.arange(-i - 1, 0)
 
             # count(a < a1) = U2
-            u1 = n1*n2 + n2*(n2-1)/2 - a.sum()
-            u2 = n1*n2 - u1
+            u1 = n1 * n2 + n2 * (n2 - 1) / 2 - a.sum()
+            u2 = n1 * n2 - u1
             # store min U value to array
             val = min(u1, u2) if alternative == 'two-sided' else u1
             u.append(val)
@@ -362,20 +366,24 @@ def mwu(x, y, correction=True, exact='auto', alternative='two-sided'):
     else:
         sd = np.sqrt(T * n1 * n2 * (n1 + n2 + 1) / 12.0)
         c = -0.5 if correction else 0
-        z = (bigu + c - n1*n2/2.0) / sd
+        z = (bigu + c - n1 * n2 / 2.0) / sd
         if alternative == 'two-sided':
             p = 2 * ss.norm.sf(abs(z))
         else:
             p = ss.norm.sf(z)
 
-    dct = {'two-sided': 'x and y are sampled from different populations',
-           'less': 'x is sampled from a population of smaller values than y',
-           'greater': 'x is sampled from a population of larger values than y'}
+    dct = {
+        'two-sided': 'x and y are sampled from different populations',
+        'less': 'x is sampled from a population of smaller values than y',
+        'greater': 'x is sampled from a population of larger values than y'
+    }
     return Bunch(statistic=smallu,
                  pvalue=p,
                  alternative=dct[alternative],
-                 a12=A, CD=CD,
-                 u1=u1, u2=u2)
+                 a12=A,
+                 CD=cliffs_delta,
+                 u1=u1,
+                 u2=u2)
 
 
 # Vargha-Delaney A12
@@ -396,15 +404,16 @@ def VD_A(treatment: List[float], control: List[float]):
     m = len(treatment)
     n = len(control)
 
-#   if m != n:
-#       raise ValueError("Data d and f must have the same length")
+    #   if m != n:
+    #       raise ValueError("Data d and f must have the same length")
 
     r = ss.rankdata(treatment + control)
     r1 = sum(r[0:m])
 
     # Compute the measure
     # A = (r1/m - (m+1)/2)/n # formula (14) in Vargha and Delaney, 2000
-    A = (2 * r1 - m * (m + 1)) / (2 * n * m)  # equivalent formula to avoid accuracy errors
+    A = (2 * r1 - m *
+         (m + 1)) / (2 * n * m)  # equivalent formula to avoid accuracy errors
 
     levels = [0.147, 0.33, 0.474]  # effect sizes from Hess and Kromrey, 2004
     magnitude = ["negligible", "small", "medium", "large"]
@@ -435,6 +444,7 @@ AMeasure <- function(a,b){
 }""")
 vd_a = robjects.r['AMeasure']
 
+
 def r_mannwhitneyu(x, y, exact=True, alternative="two.sided"):
     if len(x) < 1 or len(y) < 1:
         return Bunch(pvalue=1, a12=0, statistic=0)
@@ -445,7 +455,7 @@ def r_mannwhitneyu(x, y, exact=True, alternative="two.sided"):
     try:
         wres = _mann_whitneyu_r(v1, v2, exact=exact, alternative=alternative)
     except:
-        print(x,y)
+        print(x, y)
         sys.exit(1)
     A = vd_a(v1, v2)[0]
     uval = wres[0][0]

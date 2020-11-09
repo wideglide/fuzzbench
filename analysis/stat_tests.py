@@ -68,6 +68,9 @@ def exp_pair_test(experiment_snapshot_df, benchmark, f1, f2):
     df = experiment_snapshot_df[experiment_snapshot_df.benchmark == benchmark]
     x = df[df.fuzzer == f1].edges_covered
     y = df[df.fuzzer == f2].edges_covered
+    if len(x) < 1 or len(y) < 1:
+        print(f"[-] (pair_test) NOT enough samples for {benchmark},{f1},{f2} ")
+        return Bunch(pvalue=1, a12=0, statistic=0)
     return r_mannwhitneyu(x, y)
 
 
@@ -427,6 +430,8 @@ AMeasure <- function(a,b){
 vd_a = robjects.r['AMeasure']
 
 def r_mannwhitneyu(x, y, exact=True, alternative="two.sided"):
+    if len(x) < 1 or len(y) < 1:
+        return Bunch(pvalue=1, a12=0, statistic=0)
     if alternative == 'two-sided':
         alternative = 'two.sided'
     v1 = robjects.IntVector(x)

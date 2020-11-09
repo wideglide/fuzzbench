@@ -98,6 +98,14 @@ def two_sided_u_test_r(benchmark_snapshot_df):
                                  alternative='two-sided')
 
 
+def vda_measure(benchmark_snapshot_df):
+    """Returns A12 measure table for Vargha-Delaney A12."""
+    return _create_p_value_table(benchmark_snapshot_df,
+                                 mwu,
+                                 alternative='two-sided',
+                                 statistic='a12')
+
+
 def one_sided_wilcoxon_test(benchmark_snapshot_df):
     """Returns p-value table for one-tailed Wilcoxon signed-rank test."""
     return _create_p_value_table(benchmark_snapshot_df,
@@ -306,6 +314,8 @@ def mwu(x, y, correction=True, exact='auto', alternative='two-sided'):
     R1 = rankx.sum()
     # A = (R1/n1 - (n1+1)/2)/n2 # formula (14) in Vargha and Delaney, 2000
     A = (2 * R1 - n1 * (n1 + 1)) / (2 * n2 * n1)  # equivalent formula to avoid accuracy errors
+    # Cliff's delta linearly related to V-D A12 measure (range (-1, 1))
+    CD = (A * 2) -1
 
     # Given ranks, calculate U for x; remainder is U for y
     u1 = rankx.sum() - n1*(n1+1)/2
@@ -355,7 +365,7 @@ def mwu(x, y, correction=True, exact='auto', alternative='two-sided'):
     return Bunch(statistic=smallu,
                  pvalue=p,
                  alternative=dct[alternative],
-                 a12=A,
+                 a12=A, CD=CD,
                  u1=u1, u2=u2)
 
 
@@ -401,7 +411,6 @@ import rpy2.robjects as robjects
 _mann_whitneyu_r = robjects.r['wilcox.test']
 
 robjects.r("""
-options(warn=1)
 AMeasure <- function(a,b){
     # Compute the rank sum (Eqn 13)
     r = rank(c(a,b))
@@ -430,4 +439,4 @@ def r_mannwhitneyu(x, y, exact=True, alternative="two.sided"):
     A = vd_a(v1, v2)[0]
     uval = wres[0][0]
     pval = wres[2][0]
-    return Bunch(pvalue=pval, a12=A, u1=uval)
+    return Bunch(pvalue=pval, a12=A, statistic=uval, u1=uval)

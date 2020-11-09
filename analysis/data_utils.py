@@ -221,16 +221,22 @@ def benchmark_rank_by_stat_test_wins(benchmark_snapshot_df):
 
     Returns ranking according to the number of statistical test wins.
     """
-    p_values = stat_tests.one_sided_u_test(benchmark_snapshot_df)
+#   p_values = stat_tests.one_sided_u_test(benchmark_snapshot_df)
+    a_values = stat_tests.vda_measure(benchmark_snapshow_df)
 
     # Turn "significant" p-values into 1-s.
-    better_than = p_values.applymap(
-        lambda p: p < stat_tests.SIGNIFICANCE_THRESHOLD)
+    better_than = a_values.applymap(
+        lambda p: a < stat_tests.A12_EFFECT_THRESHOLD)
     better_than = better_than.applymap(int)
 
     score = better_than.sum(axis=1).sort_values(ascending=False)
     score.rename('stat wins', inplace=True)
 
+    return score
+
+def benchmark_rank_by_effect_size(benchmark_snapshot_df):
+    better_than = stat_tests.vda_measure(benchmark_snapshow_df)
+    score = better_than.sum(axis=1).sort_values(ascending=False)
     return score
 
 
@@ -275,11 +281,23 @@ def experiment_benchmark_summary(experiment_snapshots_df,
     def pvalue_colors(val):
         colors = {
             'N': '#fbd7d4',
-            '0.001': '#005a32',
-            '0.01': '#238b45',
-            '0.05': '#a1d99b'
+            '0.05': '#eaf8ea',
+            '0.01': '#c0e9c0',
+            '0.001': '#97db96'
         }
         return "background-color: {}".format(colors[val])
+
+    def A_colors(val):
+        color = '#ffffff'
+        if val >= 0.56 and val < 0.64:
+            color = '#eaf8ea'
+        elif val >= 0.64 and val < 0.71:
+            color = '#c0e9c0'
+        elif val >= 0.71:
+            color = '#97db96'
+        elif val <= 0.44:
+            color = '#fbd7d4'
+        return "background-color: {}".format(color)
 
     benchmark_groups = experiment_snapshots_df.groupby('benchmark')
     p_values = benchmark_groups.apply(stat_tests.two_sided_u_test)
@@ -303,24 +321,28 @@ def experiment_benchmark_summary(experiment_snapshots_df,
 
     firsts = medians.groupby('benchmark').apply(lambda x: x.nlargest(1, metric_name)).reset_index(drop=True)
     firsts['pvalue'] = firsts.apply(lambda x: p_values.loc[x.benchmark, x.fuzzer, :].values.max(), axis=1)
-    firsts['A'] = firsts.apply(lambda x: stat_tests.exp_pair_test(experiment_snapshots_df, x.benchmark, x.fuzzer, x.next).a12, axis=1)
+    firsts['A12'] = firsts.apply(lambda x: stat_tests.exp_pair_test(experiment_snapshots_df, x.benchmark, x.fuzzer, x.next).a12, axis=1)
     firsts['p-exact'] = firsts.apply(lambda x: stat_tests.exp_pair_test(experiment_snapshots_df, x.benchmark, x.fuzzer, x.next).pvalue, axis=1)
     pvalue_bins = [0, 0.001, 0.01, 0.05, 1]
     pvalue_labels = ['0.001', '0.01', '0.05', 'N']
-    firsts['conf'] = pd.cut(firsts.pvalue, bins=pvalue_bins, labels=pvalue_labels)
-    firsts.conf.fillna('N', inplace=True)
+    firsts['sig'] = pd.cut(firsts.pvalue, bins=pvalue_bins, labels=pvalue_labels)
+    firsts.sig.fillna('N', inplace=True)
     col_formats = {
         'rank': "{:.0f}",
         metric_name: "{:.0f}",
         'pct_chg': "{:.2%}",
-        'pvalue': "{:.03f}"
+        'pvalue': "{:.03f}",
+        'A12': "{:.03f}",
+        'p-exact': "{:0.4f}"
     }
-    col_order = ['benchmark', 'fuzzer', 'rank', 'pct_chg', 'pvalue', 'conf', metric_name, 'N']
+    col_order = ['benchmark', 'fuzzer', 'rank', 'pct_chg', 'pvalue', 'sig', 'A12', 'next', 'p-exact', metric_name, 'N']
     firsts = firsts[col_order]
     firsts = firsts.style\
                    .hide_index()\
                    .format(col_formats)\
-                   .applymap(pvalue_colors, subset=['conf'])
+                   .set_properties(**{'font-size': '11pt'})\
+                   .applymap(pvalue_colors, subset=['sig'])\
+                   .applymap(A_colors, subset=['A12'])
     return firsts
 
 def experiment_rank_by_average_rank(experiment_pivot_df):

@@ -203,12 +203,18 @@ class Plotter:
         # especially with distributions with high variance. It does not have
         # however violinplot's kernel density estimation.
 
-        sns.violinplot(y='edges_covered',
+        sns.boxplot(y='edges_covered',
                        x='fuzzer',
                        data=benchmark_snapshot_df,
                        order=fuzzer_order,
                        palette=self._fuzzer_colors,
                        ax=axes)
+        sns.swarmplot(x='fuzzer',
+                      y='edges_covered',
+                      data=benchmark_snapshot_df,
+                      order=fuzzer_order,
+                      size=4,
+                      ax=axes)
 
         axes.set_title(_formatted_title(benchmark_snapshot_df))
         axes.set(ylabel='Reached region coverage')

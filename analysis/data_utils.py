@@ -192,7 +192,6 @@ def experiment_summary(experiment_snapshots_df):
 
 def benchmark_rank_by_mean(benchmark_snapshot_df):
     """Returns ranking of fuzzers based on mean coverage."""
-    assert benchmark_snapshot_df.time.nunique() == 1, 'Not a snapshot!'
     means = benchmark_snapshot_df.groupby('fuzzer')[METRIC].mean()
     means.rename('mean cov', inplace=True)
     return means.sort_values(ascending=False)
@@ -200,7 +199,6 @@ def benchmark_rank_by_mean(benchmark_snapshot_df):
 
 def benchmark_rank_by_median(benchmark_snapshot_df):
     """Returns ranking of fuzzers based on median coverage."""
-    assert benchmark_snapshot_df.time.nunique() == 1, 'Not a snapshot!'
     medians = benchmark_snapshot_df.groupby('fuzzer')[METRIC].median()
     medians.rename('median cov', inplace=True)
     return medians.sort_values(ascending=False)

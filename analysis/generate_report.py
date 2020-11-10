@@ -93,7 +93,6 @@ def get_arg_parser():
         default=False,
         help='If set, then the report will track progress made in experiments')
     mutually_exclusive_group.add_argument(
-        '-m',
         '--merge-with-clobber',
         action='store_true',
         default=False,

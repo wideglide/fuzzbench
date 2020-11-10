@@ -155,6 +155,23 @@ class ExperimentResults:  # pylint: disable=too-many-instance-attributes
             data_utils.experiment_rank_by_average_rank)
 
     @property
+    def rank_by_median_and_average_rank(self):
+        """Rank fuzzers using median coverage per benchmark and average rank
+        across benchmarks."""
+        return data_utils.experiment_level_ranking(
+            self._experiment_snapshots_df, data_utils.benchmark_rank_by_median,
+            data_utils.experiment_rank_by_average_rank)
+
+    @property
+    def rank_by_effect_size_and_average_rank(self):
+        """Rank fuzzers using effect size (A12) per benchmark and average rank
+        across benchmarks."""
+        return data_utils.experiment_level_ranking(
+            self._experiment_snapshots_df,
+            data_utils.benchmark_rank_by_effect_size,
+            data_utils.experiment_rank_by_average_rank)
+
+    @property
     def rank_by_median_and_average_normalized_score(self):
         """Rank fuzzers using median coverage per benchmark and average
         normalized score across benchmarks."""

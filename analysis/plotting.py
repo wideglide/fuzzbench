@@ -219,7 +219,6 @@ class Plotter:
         """
         benchmark_names = benchmark_snapshot_df.benchmark.unique()
         assert len(benchmark_names) == 1, 'Not a single benchmark data!'
-        assert benchmark_snapshot_df.time.nunique() == 1, 'Not a snapshot!'
 
         ranking_function = data_utils.benchmark_rank_by_median
         if order == 'vda':
@@ -243,6 +242,7 @@ class Plotter:
                       data=benchmark_snapshot_df,
                       order=fuzzer_order,
                       size=4,
+                      color="0.25",
                       ax=axes)
 
         axes.set_title(_formatted_title(benchmark_snapshot_df))
@@ -273,7 +273,6 @@ class Plotter:
         """
         benchmark_names = benchmark_snapshot_df.benchmark.unique()
         assert len(benchmark_names) == 1, 'Not a single benchmark data!'
-        assert benchmark_snapshot_df.time.nunique() == 1, 'Not a snapshot!'
 
         fuzzers_in_order = data_utils.benchmark_rank_by_median(
             benchmark_snapshot_df).index
@@ -307,7 +306,6 @@ class Plotter:
         """
         benchmark_names = benchmark_snapshot_df.benchmark.unique()
         assert len(benchmark_names) == 1, 'Not a single benchmark data!'
-        assert benchmark_snapshot_df.time.nunique() == 1, 'Not a snapshot!'
 
         fuzzer_order = data_utils.benchmark_rank_by_median(
             benchmark_snapshot_df).index

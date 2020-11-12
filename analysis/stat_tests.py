@@ -67,6 +67,23 @@ def _create_p_value_table(benchmark_snapshot_df,
     return pd.DataFrame(data, index=fuzzers, columns=fuzzers)
 
 
+def _create_stats_scores_index(benchmark_snapshot_df,
+                               statistical_test,
+                               statistic='a12');
+    """Given a benchmark snapshot data frame and a statistical test function,
+    return a sorted index of scores.
+    """
+    data = []
+    for f in fuzzers:
+        mask = df.fuzzer == f
+        f_samples = list(df[mask][data_utils.METRIC]
+        other_samples = list(df[~mask][data_utils.METRIC])
+        res = statistical_test(f_samples, other_samples)
+        data.append[getattr(res, statistic, np.nan)]
+
+    return pd.DataFrame(data, index=fuzzers).sort_values(ascending=False)
+
+
 def exp_pair_test(experiment_snapshot_df, benchmark, f1, f2):
     """Perform a single statistical test given the benchmark snapshot
     dataframe, the name of the benchmark and names of two fuzzers 
@@ -76,7 +93,7 @@ def exp_pair_test(experiment_snapshot_df, benchmark, f1, f2):
     y = df[df.fuzzer == f2][data_utils.METRIC]
     if len(x) < 1 or len(y) < 1:
         print(f"[-] (pair_test) NOT enough samples for {benchmark},{f1},{f2} ")
-        return Bunch(pvalue=1, a12=0, statistic=0)
+        return Bunch(pvalue=1, a12=0.5, statistic=0)
     return r_mannwhitneyu(x, y)
 
 
@@ -97,7 +114,7 @@ def two_sided_u_test(benchmark_snapshot_df):
 def two_sided_u_test_exact(benchmark_snapshot_df):
     """Returns p-value table for two-tailed Mann-Whitney U test."""
     return _create_p_value_table(benchmark_snapshot_df,
-                                 mwu,
+                                 mwu_new,
                                  alternative='two-sided')
 
 
@@ -108,12 +125,19 @@ def two_sided_u_test_r(benchmark_snapshot_df):
                                  alternative='two-sided')
 
 
-def vda_measure(benchmark_snapshot_df):
-    """Returns A12 measure table for Vargha-Delaney A12."""
+def vda_measure_pairwise(benchmark_snapshot_df):
+    """Returns A12 table for Vargha-Delaney A measure."""
     return _create_p_value_table(benchmark_snapshot_df,
                                  r_mannwhitneyu,
                                  alternative='two-sided',
                                  statistic='a12')
+
+
+def vda_measure_multi(benchmark_snapshot_df):
+    """Returns Aiu measure index for Vargha-Delaney A measure."""
+    return _create_stats_scores_index(benchmark_sanpshot_df,
+                                      r_mannwhitneyu,
+                                      statistic='a12')
 
 
 def one_sided_wilcoxon_test(benchmark_snapshot_df):
@@ -224,10 +248,13 @@ class Bunch:
     def __init__(self, **kwds):
         self.__dict__.update(kwds)
 
+    def __repr__(self):
+        return str(self.__dict__)
+
 
 # TODO: add paired=False, do a signed-rank test if paired=True or y is
 #       not provided. See morestats.wilcoxon
-def mwu(x, y, correction=True, exact='auto', alternative='two-sided'):
+def mwu_new(x, y, correction=True, exact='auto', alternative='two-sided'):
     """
     Computes two-sample unpaired Mann-Whitney-Wilcoxon tests.
 
@@ -404,9 +431,6 @@ def VD_A(treatment: List[float], control: List[float]):
     m = len(treatment)
     n = len(control)
 
-    #   if m != n:
-    #       raise ValueError("Data d and f must have the same length")
-
     r = ss.rankdata(treatment + control)
     r1 = sum(r[0:m])
 
@@ -426,6 +450,9 @@ def VD_A(treatment: List[float], control: List[float]):
 
 
 import rpy2.robjects as robjects
+from rpy2.rinterface import RRuntimeWarning
+
+warnings.filterwarnings("ignore", category=RRuntimeWarning)
 _mann_whitneyu_r = robjects.r['wilcox.test']
 
 robjects.r("""
@@ -447,7 +474,7 @@ vd_a = robjects.r['AMeasure']
 
 def r_mannwhitneyu(x, y, exact=True, alternative="two.sided"):
     if len(x) < 1 or len(y) < 1:
-        return Bunch(pvalue=1, a12=0, statistic=0)
+        return Bunch(pvalue=1, a12=0.5, statistic=0)
     if alternative == 'two-sided':
         alternative = 'two.sided'
     v1 = robjects.IntVector(x)

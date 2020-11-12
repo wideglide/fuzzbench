@@ -221,8 +221,10 @@ class Plotter:
         assert len(benchmark_names) == 1, 'Not a single benchmark data!'
 
         ranking_function = data_utils.benchmark_rank_by_median
-        if order == 'vda':
-            ranking_function = data_utils.benchmark_rank_by_effect_size
+        if order == 'vda_pw':
+            ranking_function = data_utils.benchmark_rank_by_effect_size_pw
+        elif order == 'vda_multi':
+            ranking_function = data_utils.benchmark_rank_by_effect_size_multi
 
         fuzzer_order = ranking_function(benchmark_snapshot_df).index
 
@@ -264,7 +266,7 @@ class Plotter:
         self._write_plot_to_image(self.violin_plot,
                                   benchmark_snapshot_df,
                                   image_path,
-                                  order='vda')
+                                  order='vda_multi')
 
     def distribution_plot(self, benchmark_snapshot_df, axes=None):
         """Draws distribution plot.

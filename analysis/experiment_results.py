@@ -168,7 +168,7 @@ class ExperimentResults:  # pylint: disable=too-many-instance-attributes
         across benchmarks."""
         return data_utils.experiment_level_ranking(
             self._experiment_snapshots_df,
-            data_utils.benchmark_rank_by_effect_size,
+            data_utils.benchmark_rank_by_effect_size_multi,
             data_utils.experiment_rank_by_average_rank)
 
     @property

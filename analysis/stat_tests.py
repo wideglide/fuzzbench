@@ -16,7 +16,7 @@
 from bisect import bisect_left
 from collections import namedtuple
 from typing import List
-import sys
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -69,14 +69,16 @@ def _create_p_value_table(benchmark_snapshot_df,
 
 def _create_stats_scores_index(benchmark_snapshot_df,
                                statistical_test,
-                               statistic='a12');
+                               statistic='a12'):
     """Given a benchmark snapshot data frame and a statistical test function,
     return a sorted index of scores.
     """
     data = []
+    fuzzers = benchmark_snapshot_df.fuzzer.unique()
+    df = benchmark_snapshot_df
     for f in fuzzers:
         mask = df.fuzzer == f
-        f_samples = list(df[mask][data_utils.METRIC]
+        f_samples = list(df[mask][data_utils.METRIC])
         other_samples = list(df[~mask][data_utils.METRIC])
         res = statistical_test(f_samples, other_samples)
         data.append[getattr(res, statistic, np.nan)]
@@ -86,7 +88,7 @@ def _create_stats_scores_index(benchmark_snapshot_df,
 
 def exp_pair_test(experiment_snapshot_df, benchmark, f1, f2):
     """Perform a single statistical test given the benchmark snapshot
-    dataframe, the name of the benchmark and names of two fuzzers 
+    dataframe, the name of the benchmark and names of two fuzzers
     to compare."""
     df = experiment_snapshot_df[experiment_snapshot_df.benchmark == benchmark]
     x = df[df.fuzzer == f1][data_utils.METRIC]
@@ -135,7 +137,7 @@ def vda_measure_pairwise(benchmark_snapshot_df):
 
 def vda_measure_multi(benchmark_snapshot_df):
     """Returns Aiu measure index for Vargha-Delaney A measure."""
-    return _create_stats_scores_index(benchmark_sanpshot_df,
+    return _create_stats_scores_index(benchmark_snapshot_df,
                                       r_mannwhitneyu,
                                       statistic='a12')
 
@@ -479,11 +481,7 @@ def r_mannwhitneyu(x, y, exact=True, alternative="two.sided"):
         alternative = 'two.sided'
     v1 = robjects.IntVector(x)
     v2 = robjects.IntVector(y)
-    try:
-        wres = _mann_whitneyu_r(v1, v2, exact=exact, alternative=alternative)
-    except:
-        print(x, y)
-        sys.exit(1)
+    wres = _mann_whitneyu_r(v1, v2, exact=exact, alternative=alternative)
     A = vd_a(v1, v2)[0]
     uval = wres[0][0]
     pval = wres[2][0]

@@ -288,6 +288,55 @@ def experiment_pivot_table(experiment_snapshots_df,
     return pivot_df
 
 
+def _create_summary_table(experiment_snapshots_df,
+                          metric_name='regions'):
+    benchmark_groups = experiment_snapshots_df.groupby('benchmark')
+    p_values = benchmark_groups.apply(stat_tests.two_sided_u_test)
+    p_values = p_values.fillna(-1)
+
+    # Calculate Vargha-Delaney A measure (I-Group case)
+    a_values = benchmark_groups.apply(stat_tests.vda_measure_multi)
+    a_values = a_values.reset_index()
+
+    agg_funcs = {
+        metric_name: pd.NamedAgg(column=METRIC, aggfunc=np.median),
+        'N': pd.NamedAgg(column='trial_id', aggfunc='count')
+    }
+
+    grouping = ['benchmark', 'fuzzer']
+    fuzzer_groups = experiment_snapshots_df.groupby(grouping)
+    agg_medians = fuzzer_groups.agg(**agg_funcs).reset_index()
+
+    medians = agg_medians.merge(a_values, on=['benchmark', 'fuzzer'])
+
+    experiment_sort_columns = ['benchmark', 'A', 'fuzzer']
+    medians = medians.sort_values(by=experiment_sort_columns, ascending=True)
+
+    benchmark_medians = medians.groupby('benchmark')
+    medians['next'] = benchmark_medians.fuzzer.shift()
+    medians["rank"] = benchmark_medians[metric_name].rank(
+        method='max', ascending=False).round(0)
+    medians['pct_chg'] = benchmark_medians[metric_name].pct_change().round(4)
+
+    firsts = medians.groupby('benchmark').apply(
+        lambda x: x.nlargest(1, metric_name)).reset_index(drop=True)
+    firsts['pvalue'] = firsts.apply(
+        lambda x: p_values.loc[x.benchmark, x.fuzzer, :].values.max(), axis=1)
+    firsts['A12'] = firsts.apply(lambda x: stat_tests.exp_pair_test(
+        experiment_snapshots_df, x.benchmark, x.fuzzer, x.next).a12,
+                                 axis=1)
+    firsts['p-exact'] = firsts.apply(lambda x: stat_tests.exp_pair_test(
+        experiment_snapshots_df, x.benchmark, x.fuzzer, x.next).pvalue,
+                                     axis=1)
+    pvalue_bins = [0, 0.001, 0.01, 0.05, 1]
+    pvalue_labels = ['0.001', '0.01', '0.05', 'N']
+    firsts['sig'] = pd.cut(firsts['p-exact'],
+                           bins=pvalue_bins,
+                           labels=pvalue_labels)
+    firsts.sig.fillna('N', inplace=True)
+    return firsts
+
+
 def experiment_benchmark_summary(experiment_snapshots_df,
                                  metric_name='regions'):
     """Creates a summary table of the best coverage per fuzzer with
@@ -315,43 +364,15 @@ def experiment_benchmark_summary(experiment_snapshots_df,
             color = '#fbd7d4'
         return "background-color: {}".format(color)
 
-    benchmark_groups = experiment_snapshots_df.groupby('benchmark')
-    p_values = benchmark_groups.apply(stat_tests.two_sided_u_test)
-    p_values = p_values.fillna(-1)
+    def bold_significant(x):
+        bf = 'font-weight: bold'
+        mask = x['p-exact'] < 0.05
+        df1 = pd.DataFrame('', index=x.index, columns=x.columns)
+        df1.loc[mask, 'A12'] = bf
+        return df1
 
-    agg_funcs = {
-        metric_name: pd.NamedAgg(column=METRIC, aggfunc=np.median),
-        'N': pd.NamedAgg(column='trial_id', aggfunc='count')
-    }
+    firsts = _create_summary_table(experiment_snapshots_df, metric_name)
 
-    grouping = ['benchmark', 'fuzzer']
-    fuzzer_groups = experiment_snapshots_df.groupby(grouping)
-    medians = fuzzer_groups.agg(**agg_funcs).reset_index()
-    sort_columns = ['benchmark', metric_name, 'fuzzer']
-    medians = medians.sort_values(by=sort_columns, ascending=True)
-
-    benchmark_medians = medians.groupby('benchmark')
-    medians['next'] = benchmark_medians.fuzzer.shift()
-    medians["rank"] = benchmark_medians[metric_name].rank(
-        method='max', ascending=False).round(0)
-    medians['pct_chg'] = benchmark_medians[metric_name].pct_change().round(4)
-
-    firsts = medians.groupby('benchmark').apply(
-        lambda x: x.nlargest(1, metric_name)).reset_index(drop=True)
-    firsts['pvalue'] = firsts.apply(
-        lambda x: p_values.loc[x.benchmark, x.fuzzer, :].values.max(), axis=1)
-    firsts['A12'] = firsts.apply(lambda x: stat_tests.exp_pair_test(
-        experiment_snapshots_df, x.benchmark, x.fuzzer, x.next).a12,
-                                 axis=1)
-    firsts['p-exact'] = firsts.apply(lambda x: stat_tests.exp_pair_test(
-        experiment_snapshots_df, x.benchmark, x.fuzzer, x.next).pvalue,
-                                     axis=1)
-    pvalue_bins = [0, 0.001, 0.01, 0.05, 1]
-    pvalue_labels = ['0.001', '0.01', '0.05', 'N']
-    firsts['sig'] = pd.cut(firsts.pvalue,
-                           bins=pvalue_bins,
-                           labels=pvalue_labels)
-    firsts.sig.fillna('N', inplace=True)
     col_formats = {
         'rank': "{:.0f}",
         metric_name: "{:.0f}",
@@ -361,8 +382,8 @@ def experiment_benchmark_summary(experiment_snapshots_df,
         'p-exact': "{:0.4f}"
     }
     col_order = [
-        'benchmark', 'fuzzer', 'rank', 'pct_chg', 'pvalue', 'sig', 'A12',
-        'next', 'p-exact', metric_name, 'N'
+        'benchmark', 'fuzzer', 'pct_chg', 'A12', 'A', 'p-exact', 'sig',
+        'next', 'pvalue', metric_name, 'N'
     ]
     firsts = firsts[col_order]
     firsts = firsts.style\
@@ -370,7 +391,8 @@ def experiment_benchmark_summary(experiment_snapshots_df,
                    .format(col_formats)\
                    .set_properties(**{'font-size': '11pt'})\
                    .applymap(pvalue_colors, subset=['sig'])\
-                   .applymap(A_colors, subset=['A12'])
+                   .applymap(A_colors, subset=['A12'])\
+                   .apply(bold_significant, axis=None)
     return firsts
 
 

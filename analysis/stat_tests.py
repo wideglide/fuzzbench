@@ -84,7 +84,9 @@ def _create_stats_scores_index(benchmark_snapshot_df,
         value = getattr(res, statistic, np.nan)
         data.append(value)
 
-    return pd.DataFrame(data, index=fuzzers).sort_values(ascending=False)
+    new_df = pd.DataFrame(data, index=fuzzers, columns=["A"])
+    new_df.index.name = 'fuzzer'
+    return new_df.sort_values(by="A", ascending=False)
 
 
 def exp_pair_test(experiment_snapshot_df, benchmark, f1, f2):

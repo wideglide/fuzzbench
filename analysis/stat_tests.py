@@ -81,7 +81,8 @@ def _create_stats_scores_index(benchmark_snapshot_df,
         f_samples = list(df[mask][data_utils.METRIC])
         other_samples = list(df[~mask][data_utils.METRIC])
         res = statistical_test(f_samples, other_samples)
-        data.append[getattr(res, statistic, np.nan)]
+        value = getattr(res, statistic, np.nan)
+        data.append(value)
 
     return pd.DataFrame(data, index=fuzzers).sort_values(ascending=False)
 

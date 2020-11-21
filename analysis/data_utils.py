@@ -379,6 +379,7 @@ def experiment_benchmark_summary(experiment_snapshots_df,
         'pct_chg': "{:.2%}",
         'pvalue': "{:.03f}",
         'A12': "{:.03f}",
+        'A': "{:.03f}",
         'p-exact': "{:0.4f}"
     }
     col_order = [

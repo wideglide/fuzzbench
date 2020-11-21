@@ -142,6 +142,13 @@ class BenchmarkResults:
             self._benchmark_snapshot_df)
 
     @property
+    def rank_by_vda(self):
+	"""Fuzzer ranking by Vargha-Delany Aui measure of each fuzzer
+        compared to all other fuzzers."""
+        return data_utils.benchmark_rank_by_effect_size_multi(
+            self._benchmark_snapshot_df)
+
+    @property
     @functools.lru_cache()
     def mann_whitney_p_values(self):
         """Mann Whitney U test result."""

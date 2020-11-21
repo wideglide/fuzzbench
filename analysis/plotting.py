@@ -233,18 +233,27 @@ class Plotter:
         # especially with distributions with high variance. It does not have
         # however violinplot's kernel density estimation.
 
+        mean_props = {
+            'markersize': '10',
+            'markeredgecolor': 'black',
+            'markerfacecolor': 'white'
+        }
+
         sns.boxplot(y=self._metric,
                     x='fuzzer',
                     data=benchmark_snapshot_df,
                     order=fuzzer_order,
+                    showmeans=True,
+                    meanprops=mean_props,
                     palette=self._fuzzer_colors,
                     ax=axes)
-        sns.swarmplot(x='fuzzer',
+        sns.stripplot(x='fuzzer',
                       y=self._metric,
                       data=benchmark_snapshot_df,
                       order=fuzzer_order,
                       size=4,
-                      color="0.25",
+                      color="black",
+                      alpha=0.6,
                       ax=axes)
 
         axes.set_title(_formatted_title(benchmark_snapshot_df))
